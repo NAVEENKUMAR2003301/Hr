@@ -1,7 +1,9 @@
 import multer from "multer";
 import path from "node:path";
-import fs from "node:fs";
 
+// Still used by app.js's legacy `/uploads/employee-documents/:id/:filename` route,
+// which only serves documents uploaded before the Cloudinary migration (local disk
+// doesn't persist reliably on serverless hosts, so nothing new is written here).
 const UPLOAD_ROOT = path.resolve("uploads", "employee-documents");
 
 // Documents are things like ID proofs and certificates — there's no reason for an
@@ -27,24 +29,18 @@ function fileFilter(req, file, cb) {
   cb(null, true);
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(UPLOAD_ROOT, req.params.id);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-    cb(null, `${Date.now()}-${safeName}`);
-  },
+// Buffered in memory, then streamed straight to Cloudinary (see documents
+// controller) — never written to local disk, since that doesn't persist reliably
+// on serverless hosts (e.g. Vercel) and Cloudinary is now the source of truth.
+// 10MB cap keeps a single bad upload from ballooning memory/bandwidth.
+export const uploadDocument = multer({
+  storage: multer.memoryStorage(),
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-// 10MB cap keeps a single bad upload from filling local disk — this is the "zero-cost"
-// local filesystem storage from the blueprint, not cloud storage, so space is finite.
-export const uploadDocument = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
-
-// Excel imports are parsed in memory (small files, no need to persist the upload
-// itself to disk) — kept separate from the document storage above.
+// Excel imports are parsed in memory too (small files, no need to persist the
+// upload itself anywhere) — kept separate from the document storage above.
 export const uploadSpreadsheet = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 export { UPLOAD_ROOT };

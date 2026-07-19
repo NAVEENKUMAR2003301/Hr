@@ -32,3 +32,13 @@ export function formatRelativeTime(date) {
 export function getErrorMessage(err, fallback = "Something went wrong") {
   return err.response?.data?.error ?? fallback;
 }
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL ?? "http://localhost:4000/api").replace(/\/api\/?$/, "");
+
+// A document's fileUrl is either a full Cloudinary URL (new uploads — already
+// absolute, used as-is) or a legacy relative path served by this app's own API
+// (old uploads from before the Cloudinary migration — needs the API origin prefixed).
+export function resolveDocumentUrl(fileUrl) {
+  if (!fileUrl) return "";
+  return /^https?:\/\//.test(fileUrl) ? fileUrl : `${API_ORIGIN}${fileUrl}`;
+}

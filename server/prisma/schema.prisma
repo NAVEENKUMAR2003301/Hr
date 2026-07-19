@@ -192,7 +192,15 @@ model EmployeeDocument {
 
   docType    String
   fileName   String
+  // Legacy local-disk path — still populated (and still served) for documents
+  // uploaded before the Cloudinary migration; new uploads leave this as the
+  // Cloudinary public ID's display fallback and rely on cloudinaryPublicId instead.
   fileUrl    String
+  // Set only for documents uploaded to Cloudinary (local disk doesn't persist
+  // reliably on serverless hosts). `cloudinaryResourceType` ("image" | "raw") is
+  // needed to build a correctly-signed access URL — Cloudinary requires it.
+  cloudinaryPublicId     String?
+  cloudinaryResourceType String?
   uploadedAt DateTime @default(now())
 
   @@index([employeeId])

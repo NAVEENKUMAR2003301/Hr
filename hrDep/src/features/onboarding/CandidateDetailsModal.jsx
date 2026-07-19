@@ -2,10 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Modal from "../../components/Modal";
 import ConfirmModal from "../../components/ConfirmModal";
-import { formatDate, getErrorMessage } from "../../lib/utils";
+import { formatDate, getErrorMessage, resolveDocumentUrl } from "../../lib/utils";
 import { useEmployeeDocuments, useUploadEmployeeDocument, useDeleteEmployeeDocument } from "../../api/useEmployeeDocuments";
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? "http://localhost:4000/api").replace(/\/api\/?$/, "");
 
 // Same slots offered on the New Candidate intake form — kept in this fixed order
 // so a slot without a document yet still shows an Upload control, not just a gap.
@@ -61,7 +59,7 @@ function DocumentSlotRow({ employeeId, docType, existing }) {
         <p className="font-medium text-slate-900 dark:text-slate-50">{docType}</p>
         {existing ? (
           <a
-            href={`${API_ORIGIN}${existing.fileUrl}`}
+            href={resolveDocumentUrl(existing.fileUrl)}
             target="_blank"
             rel="noreferrer"
             className="text-xs text-indigo-600 hover:underline"

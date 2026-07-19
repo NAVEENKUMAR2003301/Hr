@@ -2,10 +2,9 @@ import { useRef, useState } from "react";
 import { useEmployeeDocuments, useUploadEmployeeDocument, useDeleteEmployeeDocument } from "../../api/useEmployeeDocuments";
 import ConfirmModal from "../../components/ConfirmModal";
 import Modal from "../../components/Modal";
-import { formatDate, getErrorMessage } from "../../lib/utils";
+import { formatDate, getErrorMessage, resolveDocumentUrl } from "../../lib/utils";
 
 const DOC_TYPES = ["ID Proof", "Education Certificate", "Offer Letter", "Appointment Letter", "Other"];
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? "http://localhost:4000/api").replace(/\/api\/?$/, "");
 
 function NewDocumentModal({ employee, onClose, onUpload, uploading, error }) {
   const [docType, setDocType] = useState(DOC_TYPES[0]);
@@ -136,7 +135,7 @@ export default function EmployeeDocumentsTab({ employeeId, employee }) {
           <li key={doc.id} className="flex items-center justify-between py-3 text-sm">
             <div>
               <a
-                href={`${API_ORIGIN}${doc.fileUrl}`}
+                href={resolveDocumentUrl(doc.fileUrl)}
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium text-indigo-600 hover:underline"
