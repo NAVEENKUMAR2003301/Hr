@@ -1,0 +1,352 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+  RESIGNED
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  CASUAL
+  MATERNITY
+  PATERNITY
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED_BY_MANAGER
+  APPROVED_BY_HR
+  REJECTED
+  CANCELLED
+}
+
+enum OnboardingCategory {
+  DOCUMENT
+  IT_SETUP
+  TRAINING
+}
+
+enum OnboardingProcessStatus {
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+}
+
+enum OnboardingPaymentStatus {
+  PENDING
+  PAID
+}
+
+enum OnboardingTaskStatus {
+  PENDING
+  COMPLETED
+}
+
+enum ReviewCycleType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  PROBATION
+}
+
+enum ReviewCycleStatus {
+  UPCOMING
+  ACTIVE
+  CLOSED
+}
+
+enum ReviewStatus {
+  SELF_APPRAISAL_PENDING
+  MANAGER_REVIEW_PENDING
+  ACKNOWLEDGED
+  DISPUTED
+}
+
+// ---------- User / Auth ----------
+
+model User {
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  passwordHash       String
+  role               Role     @default(EMPLOYEE)
+  refreshToken       String?
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+
+  employee Employee?
+}
+
+// ---------- Employee Profile ----------
+
+model Employee {
+  id                     String           @id @default(uuid())
+  userId                 String           @unique
+  user                   User             @relation(fields: [userId], references: [id])
+  employeeCode           String           @unique
+
+  firstName              String
+  lastName               String
+  dateOfBirth            DateTime?
+  personalEmail          String?
+  phoneNumber            String?
+  address                String?
+  emergencyContactName   String?
+  emergencyContactNumber String?
+  profilePictureUrl      String?
+
+  departmentId           String?
+  department             Department?      @relation("DepartmentEmployees", fields: [departmentId], references: [id])
+  designationId          String?
+  designation            Designation?     @relation(fields: [designationId], references: [id])
+
+  managerId              String?
+  manager                Employee?        @relation("ManagerReports", fields: [managerId], references: [id])
+  reports                Employee[]       @relation("ManagerReports")
+
+  joiningDate            DateTime         @default(now())
+  employmentType         EmploymentType   @default(FULL_TIME)
+  employmentStatus       EmploymentStatus @default(ACTIVE)
+
+  createdAt              DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  headOfDepartment       Department?      @relation("DepartmentHead")
+
+  leaveBalances          LeaveBalance[]
+  leaveRequests          LeaveRequest[]         @relation("LeaveRequestEmployee")
+  managerApprovals       LeaveRequest[]         @relation("LeaveRequestManagerApproval")
+  hrApprovals            LeaveRequest[]         @relation("LeaveRequestHrApproval")
+
+  onboardingProcess      OnboardingProcess?     @relation("OnboardingSubject")
+  onboardingAssignments  OnboardingProcess[]    @relation("OnboardingHrAssigned")
+
+  reviewsAsEmployee      Review[]               @relation("ReviewEmployee")
+  reviewsAsReviewer      Review[]               @relation("ReviewReviewer")
+
+  documents              EmployeeDocument[]
+
+  @@index([departmentId])
+  @@index([managerId])
+}
+
+model EmployeeDocument {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  docType    String
+  fileName   String
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+
+  @@index([employeeId])
+}
+
+// ---------- Organization Structure ----------
+
+model Department {
+  id            String       @id @default(uuid())
+  name          String
+  code          String       @unique
+  headEmployeeId String?     @unique
+  head          Employee?    @relation("DepartmentHead", fields: [headEmployeeId], references: [id])
+
+  employees     Employee[]   @relation("DepartmentEmployees")
+  designations  Designation[]
+}
+
+model Designation {
+  id           String     @id @default(uuid())
+  title        String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  employees    Employee[]
+}
+
+// ---------- Leave Management ----------
+
+model LeavePolicy {
+  id             String    @id @default(uuid())
+  leaveType      LeaveType @unique
+  maxDaysPerYear Int
+  isPaid         Boolean   @default(true)
+
+  // When set, this leave type accrues at N days/month (capped at maxDaysPerYear)
+  // instead of being available in full at the start of the year.
+  accrualPerMonth Int?
+
+  balances       LeaveBalance[]
+  requests       LeaveRequest[]
+}
+
+model Holiday {
+  id   String   @id @default(uuid())
+  date DateTime @unique
+  name String
+}
+
+model LeaveBalance {
+  id            String      @id @default(uuid())
+  employeeId    String
+  employee      Employee    @relation(fields: [employeeId], references: [id])
+  leavePolicyId String
+  leavePolicy   LeavePolicy @relation(fields: [leavePolicyId], references: [id])
+  year          Int
+
+  totalDays     Int
+  usedDays      Int         @default(0)
+  pendingDays   Int         @default(0)
+
+  @@unique([employeeId, leavePolicyId, year])
+}
+
+model LeaveRequest {
+  id                String              @id @default(uuid())
+  employeeId        String
+  employee          Employee            @relation("LeaveRequestEmployee", fields: [employeeId], references: [id])
+  leavePolicyId     String
+  leavePolicy       LeavePolicy         @relation(fields: [leavePolicyId], references: [id])
+
+  startDate         DateTime
+  endDate           DateTime
+  reason            String
+
+  status            LeaveRequestStatus  @default(PENDING)
+
+  managerApprovalId String?
+  managerApproval   Employee?           @relation("LeaveRequestManagerApproval", fields: [managerApprovalId], references: [id])
+  managerComment    String?
+
+  hrApprovalId      String?
+  hrApproval        Employee?           @relation("LeaveRequestHrApproval", fields: [hrApprovalId], references: [id])
+  hrComment         String?
+
+  createdAt         DateTime            @default(now())
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+// ---------- Onboarding ----------
+
+model OnboardingTaskTemplate {
+  id           String             @id @default(uuid())
+  taskName     String             @unique
+  category     OnboardingCategory
+  assignedRole Role               @default(ADMIN)
+  isMandatory  Boolean            @default(true)
+
+  taskItems    OnboardingTaskItem[]
+}
+
+model OnboardingProcess {
+  id            String                  @id @default(uuid())
+  employeeId    String                  @unique
+  employee      Employee                @relation("OnboardingSubject", fields: [employeeId], references: [id])
+  hrAssignedId  String?
+  hrAssigned    Employee?               @relation("OnboardingHrAssigned", fields: [hrAssignedId], references: [id])
+
+  startDate     DateTime                @default(now())
+  targetEndDate DateTime?
+  status        OnboardingProcessStatus @default(IN_PROGRESS)
+
+  // No email service is wired up yet — these record HR's action (and when) rather
+  // than actually sending mail. See server/src/controllers/onboarding.controller.js.
+  paymentStatus          OnboardingPaymentStatus @default(PENDING)
+  offerLetterSentAt      DateTime?
+  appointmentLetterSentAt DateTime?
+
+  taskItems     OnboardingTaskItem[]
+}
+
+model OnboardingTaskItem {
+  id            String                @id @default(uuid())
+  processId     String
+  process       OnboardingProcess     @relation(fields: [processId], references: [id])
+  templateId    String
+  template      OnboardingTaskTemplate @relation(fields: [templateId], references: [id])
+
+  status        OnboardingTaskStatus  @default(PENDING)
+  completedAt   DateTime?
+  fileUploadUrl String?
+
+  @@index([processId])
+}
+
+// ---------- Performance Management ----------
+
+model ReviewCycle {
+  id        String            @id @default(uuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  type      ReviewCycleType
+  status    ReviewCycleStatus @default(UPCOMING)
+
+  reviews   Review[]
+}
+
+model Review {
+  id         String       @id @default(uuid())
+  cycleId    String
+  cycle      ReviewCycle  @relation(fields: [cycleId], references: [id])
+  employeeId String
+  employee   Employee     @relation("ReviewEmployee", fields: [employeeId], references: [id])
+  reviewerId String
+  reviewer   Employee     @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+
+  status     ReviewStatus @default(SELF_APPRAISAL_PENDING)
+
+  ratings    ReviewRating[]
+
+  @@index([cycleId])
+  @@index([employeeId])
+}
+
+model FeedbackCategory {
+  id      String         @id @default(uuid())
+  name    String         @unique
+
+  ratings ReviewRating[]
+}
+
+model ReviewRating {
+  id           String           @id @default(uuid())
+  reviewId     String
+  review       Review           @relation(fields: [reviewId], references: [id])
+  categoryId   String
+  category     FeedbackCategory @relation(fields: [categoryId], references: [id])
+
+  selfRating    Int?
+  managerRating Int?
+  comment       String?
+
+  @@unique([reviewId, categoryId])
+}
