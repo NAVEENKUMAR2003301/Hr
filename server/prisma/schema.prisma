@@ -90,16 +90,40 @@ enum ReviewStatus {
 // ---------- User / Auth ----------
 
 model User {
-  id                 String   @id @default(uuid())
-  email              String   @unique
-  passwordHash       String
-  role               Role     @default(EMPLOYEE)
-  refreshToken       String?
-  isActive           Boolean  @default(true)
-  mustChangePassword Boolean  @default(true)
-  createdAt          DateTime @default(now())
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  // HR/admin accounts created via sign-up have no Employee record to pull a name
+  // from (unlike employee logins, which always have one) — stored here instead.
+  name                   String?
+  passwordHash           String
+  role                   Role      @default(EMPLOYEE)
+  refreshToken           String?
+  isActive               Boolean   @default(true)
+  mustChangePassword     Boolean   @default(true)
+  passwordResetToken     String?   @unique
+  passwordResetExpiresAt DateTime?
+  createdAt              DateTime  @default(now())
 
-  employee Employee?
+  employee  Employee?
+  auditLogs AuditLog[]
+}
+
+// Who-changed-what trail across the app, now that multiple HR/admin users share
+// this system — not tied to a single entity table since it spans employees, leave
+// decisions, onboarding actions, etc. `entityId` + `entityType` let the UI link
+// back to the record when useful, but `summary` alone is enough to read the log.
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  summary    String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
 }
 
 // ---------- Employee Profile ----------
@@ -132,6 +156,12 @@ model Employee {
   joiningDate            DateTime         @default(now())
   employmentType         EmploymentType   @default(FULL_TIME)
   employmentStatus       EmploymentStatus @default(ACTIVE)
+
+  // Whether HR has physically handed this employee their ID card yet — tracked
+  // separately from onboarding documents since it's a physical-world action HR
+  // does independently of the digital checklist, at a scale (3000+ employees)
+  // where "who still needs a card" needs its own searchable, markable list.
+  idCardProvided         Boolean          @default(false)
 
   createdAt              DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
@@ -176,6 +206,10 @@ model Department {
   code          String       @unique
   headEmployeeId String?     @unique
   head          Employee?    @relation("DepartmentHead", fields: [headEmployeeId], references: [id])
+  // Job-title text entered on the Department form when picking a head (e.g. "HR",
+  // "Senior Associate Software Engineer") — shown on every member's Overview tab,
+  // not just the head's own record.
+  role          String?
 
   employees     Employee[]   @relation("DepartmentEmployees")
   designations  Designation[]

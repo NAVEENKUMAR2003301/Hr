@@ -1,3 +1,31 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Native form controls (date/time pickers, scrollbars, etc.) render with the
+   browser's light-theme colors by default regardless of the page's own dark
+   styling — e.g. a <input type="date"> shows black text/icon on our dark
+   background unless the browser is explicitly told which color scheme to use.
+   `color-scheme` is the standard way to fix this app-wide in one place, instead
+   of overriding every date/time input's colors by hand. */
+html.dark {
+  color-scheme: dark;
+}
+html:not(.dark) {
+  color-scheme: light;
+}
+
+/* `color-scheme` alone doesn't reliably fix <select>/<option> text color across
+   browsers — every <select> in this app is styled with `bg-transparent` and no
+   explicit text color, so it was falling back to the browser's default (often
+   black) regardless of color-scheme, making the selected value/dropdown list
+   unreadable against our dark background. Set it explicitly instead of relying
+   on the browser to infer it. */
+html.dark select {
+  color: #f1f5f9; /* slate-100 */
+  background-color: #0f172a; /* slate-900 */
+}
+html.dark select option {
+  color: #f1f5f9;
+  background-color: #0f172a;
+}

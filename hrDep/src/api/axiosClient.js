@@ -29,7 +29,12 @@ api.interceptors.response.use(
         await refreshPromise;
         return api(config);
       } catch {
-        // fall through to reject below
+        // Refresh itself failed — the session is genuinely gone (both tokens
+        // invalid/expired), not just a stale access token. Nothing else in the app
+        // would otherwise notice this, since auth state is only checked once on
+        // mount; without this, the user is stuck on the current page seeing a raw
+        // "Not authenticated" error with no way to tell what happened or fix it.
+        window.dispatchEvent(new Event("auth:session-expired"));
       }
     }
     return Promise.reject(error);

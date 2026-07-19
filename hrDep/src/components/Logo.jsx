@@ -1,7 +1,7 @@
 // Brand: STACKLY
-// Color theory: indigo (trust, stability — dominant HR-brand hue) fading into cyan
-// (clarity, momentum) on a neutral slate wordmark, following a 60/30/10 balance
-// (neutral text 60%, indigo 30%, cyan accent 10% on the icon only).
+// Icon: two interlocking comma shapes forming a flowing "S" — teal (growth, people)
+// spiraling into navy (stability, trust), the same motif reused for the favicon and
+// the pre-React splash screen so every "S" mark in the app is the same shape.
 
 const SIZES = {
   sm: { icon: 24, text: "text-lg", gap: "gap-2" },
@@ -23,21 +23,13 @@ export default function Logo({ size = "md", withWordmark = true, className = "" 
         aria-hidden="true"
         className="shrink-0"
       >
-        <defs>
-          <linearGradient id="stackly-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#4f46e5" />
-            <stop offset="100%" stopColor="#22d3ee" />
-          </linearGradient>
-        </defs>
-        {/* three stacked layers, motif for "stack" + org hierarchy */}
-        <path d="M16 3L29 9.5L16 16L3 9.5L16 3Z" fill="url(#stackly-grad)" />
-        <path d="M3 16L16 22.5L29 16" stroke="url(#stackly-grad)" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-        <path d="M3 22.5L16 29L29 22.5" stroke="url(#stackly-grad)" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
+        <path d="M16 3a13 13 0 0 1 0 26 6.5 6.5 0 0 1 0-13 6.5 6.5 0 0 0 0-13z" fill="#1e3a5f" />
+        <path d="M16 29a13 13 0 0 1 0-26 6.5 6.5 0 0 1 0 13 6.5 6.5 0 0 0 0 13z" fill="#7dd8bf" />
       </svg>
 
       {withWordmark && (
-        <span className={`${text} font-extrabold tracking-tight text-slate-900 dark:text-slate-50`}>
-          Stack<span className="bg-gradient-to-r from-indigo-600 to-cyan-500 bg-clip-text text-transparent">ly</span>
+        <span className={`${text} font-extrabold tracking-tight text-[#1e3a5f] dark:text-slate-50`}>
+          STACKLY
         </span>
       )}
     </div>

@@ -23,6 +23,7 @@ function OverviewTab({ employee }) {
       <Field label="Login email" value={employee.user?.email} />
       <Field label="Role" value={employee.user?.role} />
       <Field label="Department" value={employee.department?.name} />
+      <Field label="Department role" value={employee.department?.role} />
       <Field label="Designation" value={employee.designation?.title} />
       <Field label="Manager" value={employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "—"} />
       <Field label="Employment type" value={employee.employmentType} />
@@ -156,23 +157,25 @@ export default function AdminEmployeeDetailPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 rounded-lg border border-slate-200 dark:border-slate-800 p-1 w-fit">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              tab === t ? "bg-indigo-600 text-white" : "text-slate-600 dark:text-slate-300"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="overflow-x-auto">
+        <div className="flex w-fit gap-1 rounded-lg border border-slate-200 dark:border-slate-800 p-1">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${
+                tab === t ? "bg-indigo-600 text-white" : "text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         {tab === "Overview" && <OverviewTab employee={employee} />}
-        {tab === "Documents" && <EmployeeDocumentsTab employeeId={id} />}
+        {tab === "Documents" && <EmployeeDocumentsTab employeeId={id} employee={employee} />}
         {tab === "Leave History" && <LeaveHistoryTab employee={employee} />}
         {tab === "Onboarding" && <OnboardingTab employee={employee} />}
         {tab === "Performance" && <PerformanceTab employee={employee} />}

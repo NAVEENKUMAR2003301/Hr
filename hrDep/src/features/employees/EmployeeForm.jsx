@@ -2,7 +2,7 @@ import { getErrorMessage } from "../../lib/utils";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { personalInfoSchema, employmentInfoSchema, roleAccessSchema } from "../../lib/schemas";
-import { useDepartments, useDesignations } from "../../api/useOrg";
+import { useDepartments } from "../../api/useOrg";
 import { useCreateEmployee, useUpdateEmployee, useNextEmployeeCode } from "../../api/useEmployees";
 import ManagerPicker from "./ManagerPicker";
 
@@ -53,7 +53,6 @@ export default function EmployeeForm({ mode = "create", employeeId, initialData,
   const [createdCredentials, setCreatedCredentials] = useState(null);
 
   const { data: departments } = useDepartments();
-  const { data: designations } = useDesignations(form.departmentId);
   const { data: nextCode } = useNextEmployeeCode(!isEdit);
 
   // Adjusting state during render (not in an effect) per React's recommended pattern
@@ -193,14 +192,14 @@ export default function EmployeeForm({ mode = "create", employeeId, initialData,
 
         {step === 1 && (
           <>
-            <Field label="Employee code" error={errors.employeeCode}>
+            <Field label="Employee ID" error={errors.employeeCode}>
               <input className={inputClass} value={form.employeeCode} onChange={(e) => set("employeeCode", e.target.value)} />
             </Field>
             <Field label="Department" error={errors.departmentId}>
               <select
                 className={inputClass}
                 value={form.departmentId}
-                onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value, designationId: "" }))}
+                onChange={(e) => set("departmentId", e.target.value)}
               >
                 <option value="">— Unassigned —</option>
                 {departments?.map((d) => (
@@ -210,22 +209,7 @@ export default function EmployeeForm({ mode = "create", employeeId, initialData,
                 ))}
               </select>
             </Field>
-            <Field label="Designation" error={errors.designationId}>
-              <select
-                className={inputClass}
-                value={form.designationId}
-                onChange={(e) => set("designationId", e.target.value)}
-                disabled={!form.departmentId}
-              >
-                <option value="">— None —</option>
-                {designations?.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.title}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Manager" error={errors.managerId}>
+            <Field label="Scrum Master (optional)" error={errors.managerId}>
               <ManagerPicker
                 value={form.managerId}
                 selectedLabel={selectedManagerLabel}

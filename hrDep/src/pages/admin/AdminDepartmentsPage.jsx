@@ -1,11 +1,37 @@
-import { getErrorMessage } from "../../lib/utils";
+import { getErrorMessage, formatDate } from "../../lib/utils";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useDepartments, useDeleteDepartment, useDeleteDesignation } from "../../api/useOrg";
+import { useEmployees } from "../../api/useEmployees";
 import Modal from "../../components/Modal";
 import ConfirmModal from "../../components/ConfirmModal";
 import DepartmentForm from "../../features/departments/DepartmentForm";
 import DesignationManager from "../../features/departments/DesignationManager";
+
+function DepartmentEmployeesList({ departmentId }) {
+  const { data, isLoading } = useEmployees({ departmentId, page: 1, pageSize: 100 });
+
+  if (isLoading) return <p className="mt-2 text-xs text-slate-400">Loading…</p>;
+  if (!data?.items.length) return <p className="mt-2 text-xs text-slate-400">No employees in this department yet.</p>;
+
+  return (
+    <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+      {data.items.map((emp) => (
+        <li key={emp.id} className="py-2 text-xs">
+          <Link
+            to={`/admin/employees/${emp.id}`}
+            className="font-medium text-slate-900 dark:text-slate-50 hover:text-indigo-600"
+          >
+            {emp.firstName} {emp.lastName}
+          </Link>
+          <p className="text-slate-500">
+            {emp.employeeCode} · {emp.user?.role ?? "—"} · {emp.employmentStatus} · Joined {formatDate(emp.joiningDate)}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function AdminDepartmentsPage() {
   const { data, isLoading } = useDepartments();
@@ -14,6 +40,7 @@ export default function AdminDepartmentsPage() {
 
   const [formTarget, setFormTarget] = useState(null); // null | "new" | department object
   const [expandedId, setExpandedId] = useState(null);
+  const [expandedEmployeesId, setExpandedEmployeesId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null); // { type: "department" | "designation", item }
   const [deleteError, setDeleteError] = useState(null);
 
@@ -64,11 +91,17 @@ export default function AdminDepartmentsPage() {
             <p className="mt-2 text-sm text-slate-500">
               Head: {dept.head ? `${dept.head.firstName} ${dept.head.lastName}` : "Unassigned"}
             </p>
-            <p className="text-sm text-slate-500">{dept._count?.employees ?? 0} employees</p>
+            <button
+              onClick={() => setExpandedEmployeesId(expandedEmployeesId === dept.id ? null : dept.id)}
+              className="text-sm text-indigo-600 hover:underline"
+            >
+              {dept._count?.employees ?? 0} employees {expandedEmployeesId === dept.id ? "▲" : "▼"}
+            </button>
+            {expandedEmployeesId === dept.id && <DepartmentEmployeesList departmentId={dept.id} />}
 
             <button
               onClick={() => setExpandedId(expandedId === dept.id ? null : dept.id)}
-              className="mt-3 text-xs font-medium text-indigo-600 hover:underline"
+              className="mt-3 block text-xs font-medium text-indigo-600 hover:underline"
             >
               {expandedId === dept.id ? "Hide designations" : "Manage designations"}
             </button>

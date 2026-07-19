@@ -1,6 +1,8 @@
-import { getErrorMessage } from "../../lib/utils";
+import { getErrorMessage, formatDate } from "../../lib/utils";
 import { useMemo, useState } from "react";
 import { useHolidays, useCreateHoliday, useDeleteHoliday } from "../../api/useHolidays";
+import { useLeaveRequests, useCancelLeaveRequest } from "../../api/useLeaves";
+import ConfirmModal from "../../components/ConfirmModal";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -46,11 +48,34 @@ export default function HolidayCalendar() {
   const createHoliday = useCreateHoliday();
   const deleteHoliday = useDeleteHoliday();
 
+  const { data: approvedLeaves } = useLeaveRequests({ status: "APPROVED_BY_HR" });
+  const cancelLeave = useCancelLeaveRequest();
+  const [revokeError, setRevokeError] = useState(null);
+  const [revokeTarget, setRevokeTarget] = useState(null);
+
   const holidayByDate = useMemo(() => {
     const map = new Map();
     holidays?.forEach((h) => map.set(h.date.slice(0, 10), h));
     return map;
   }, [holidays]);
+
+  // Anyone whose approved leave overlaps any day of the visible month — the actual
+  // leave request date range, not just a single day, since a leave can span weeks.
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+  const onLeaveThisMonth = (approvedLeaves ?? []).filter(
+    (req) => new Date(req.startDate) <= monthEnd && new Date(req.endDate) >= monthStart
+  );
+
+  async function confirmRevoke() {
+    setRevokeError(null);
+    try {
+      await cancelLeave.mutateAsync(revokeTarget.id);
+      setRevokeTarget(null);
+    } catch (err) {
+      setRevokeError(getErrorMessage(err, "Failed to revoke"));
+    }
+  }
 
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
 
@@ -87,7 +112,7 @@ export default function HolidayCalendar() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => changeMonth(-1)}
@@ -105,7 +130,7 @@ export default function HolidayCalendar() {
             →
           </button>
         </div>
-        <div className="flex items-center gap-4 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm bg-slate-200 dark:bg-slate-700 inline-block" /> Week off
           </span>
@@ -162,6 +187,39 @@ export default function HolidayCalendar() {
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+          On leave this month ({onLeaveThisMonth.length})
+        </p>
+        {onLeaveThisMonth.length === 0 && <p className="text-sm text-slate-400">Nobody on approved leave this month.</p>}
+        {onLeaveThisMonth.length > 0 && (
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {onLeaveThisMonth.map((req) => (
+              <li key={req.id} className="flex items-center justify-between py-2 text-sm">
+                <div>
+                  <span className="font-medium text-slate-900 dark:text-slate-50">
+                    {req.employee?.firstName} {req.employee?.lastName}
+                  </span>
+                  <span className="text-slate-500">
+                    {" "}
+                    · {req.leavePolicy?.leaveType} · {formatDate(req.startDate)} – {formatDate(req.endDate)}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setRevokeError(null);
+                    setRevokeTarget(req);
+                  }}
+                  className="text-xs text-red-500 hover:underline"
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
           Official holidays this month ({monthHolidays.length})
         </p>
         {monthHolidays.length === 0 && <p className="text-sm text-slate-400 mb-3">None marked yet.</p>}
@@ -195,6 +253,20 @@ export default function HolidayCalendar() {
         </form>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
+
+      {revokeTarget && (
+        <ConfirmModal
+          title="Revoke this leave?"
+          message={`Revoke ${revokeTarget.employee?.firstName} ${revokeTarget.employee?.lastName}'s ${revokeTarget.leavePolicy?.leaveType} leave (${formatDate(revokeTarget.startDate)} – ${formatDate(revokeTarget.endDate)})? Their leave balance will be restored.`}
+          confirmLabel="Revoke"
+          pending={cancelLeave.isPending}
+          onCancel={() => setRevokeTarget(null)}
+          onConfirm={confirmRevoke}
+        />
+      )}
+      {revokeError && (
+        <div className="fixed bottom-4 right-4 rounded-lg bg-red-600 text-white text-sm px-4 py-2 shadow-lg">{revokeError}</div>
+      )}
     </div>
   );
 }

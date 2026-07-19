@@ -25,6 +25,19 @@ export function useCreateEmployee() {
   });
 }
 
+// Onboarding's lightweight intake (name/phone/email/address only) — see
+// server/src/services/employee.service.js createCandidate for the defaults it fills in.
+export function useCreateCandidate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => (await api.post("/employees/candidates", data)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+    },
+  });
+}
+
 export function useUpdateEmployee(id) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -42,6 +55,15 @@ export function useDeactivateEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id) => (await api.delete(`/employees/${id}`)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
+  });
+}
+
+// Toggles whether HR has physically handed this employee their ID card yet.
+export function useSetIdCardStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, provided }) => (await api.patch(`/employees/${id}/id-card`, { provided })).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
   });
 }

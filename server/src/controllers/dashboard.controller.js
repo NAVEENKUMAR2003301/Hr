@@ -14,7 +14,9 @@ export async function summary(req, res, next) {
       recentLeaves,
       recentCompletedTasks,
     ] = await Promise.all([
-      prisma.employee.count(),
+      // Matches the directory's default view (employee.service.js listEmployees),
+      // which hides TERMINATED employees unless explicitly requested.
+      prisma.employee.count({ where: { employmentStatus: { not: "TERMINATED" } } }),
       prisma.leaveRequest.count({ where: { status: "PENDING" } }),
       prisma.onboardingProcess.count({ where: { status: "IN_PROGRESS" } }),
       prisma.department.count(),

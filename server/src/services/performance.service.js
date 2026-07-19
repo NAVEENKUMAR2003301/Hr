@@ -1,11 +1,12 @@
 import { prisma } from "../lib/prisma.js";
+import { withTransactionRetry } from "../lib/withTransactionRetry.js";
 
 // Setting a cycle ACTIVE creates one Review per active employee, reviewer = their manager,
 // plus a blank ReviewRating row per active FeedbackCategory so the self/manager rating UI
 // has something to render immediately instead of an empty list until a first submission.
 // Employees with no manager (e.g. the CEO) are skipped — nothing to review against.
 export async function activateReviewCycle(cycleId) {
-  return prisma.$transaction(async (tx) => {
+  return withTransactionRetry(async (tx) => {
     const cycle = await tx.reviewCycle.update({ where: { id: cycleId }, data: { status: "ACTIVE" } });
 
     const employees = await tx.employee.findMany({

@@ -50,3 +50,22 @@ export async function update(req, res, next) {
     next(err);
   }
 }
+
+// "Reset" rather than a true delete — only allowed with nothing used/pending, since
+// the row is recreated fresh (seeded from the policy default/accrued-so-far amount)
+// the next time this employee's balances are viewed, via ensureLeaveBalances.
+export async function remove(req, res, next) {
+  try {
+    const balance = await prisma.leaveBalance.findUnique({ where: { id: req.params.id } });
+    if (!balance) return res.status(404).json({ error: "Leave balance not found" });
+
+    if (balance.usedDays > 0 || balance.pendingDays > 0) {
+      return res.status(409).json({ error: "Cannot reset a balance with used or pending days" });
+    }
+
+    await prisma.leaveBalance.delete({ where: { id: req.params.id } });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}

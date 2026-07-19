@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Employees" value={data?.stats.totalEmployees} to="/admin/employees" />
         <StatCard label="Pending Leave Requests" value={data?.stats.pendingLeaveCount} to="/admin/leaves/requests" />
-        <StatCard label="Active Onboarding" value={data?.stats.activeOnboardingCount} to="/admin/onboarding/tracker" />
+        <StatCard label="Active Onboarding" value={data?.stats.activeOnboardingCount} to="/admin/onboarding" />
         <StatCard label="Departments" value={data?.stats.departmentCount} to="/admin/departments" />
       </div>
 

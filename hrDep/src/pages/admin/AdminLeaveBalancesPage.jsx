@@ -1,13 +1,16 @@
 import { getErrorMessage } from "../../lib/utils";
 import { useState } from "react";
 import { useEmployees } from "../../api/useEmployees";
-import { useLeaveBalances, useUpdateLeaveBalance } from "../../api/useLeaveBalances";
+import { useLeaveBalances, useUpdateLeaveBalance, useDeleteLeaveBalance } from "../../api/useLeaveBalances";
+import ConfirmModal from "../../components/ConfirmModal";
 
 function BalanceRow({ balance }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(balance.totalDays);
   const [error, setError] = useState(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const updateBalance = useUpdateLeaveBalance();
+  const deleteBalance = useDeleteLeaveBalance();
 
   async function save() {
     setError(null);
@@ -20,6 +23,17 @@ function BalanceRow({ balance }) {
       setEditing(false);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to update"));
+    }
+  }
+
+  async function resetBalance() {
+    setError(null);
+    try {
+      await deleteBalance.mutateAsync(balance.id);
+      setConfirmingReset(false);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to reset"));
+      setConfirmingReset(false);
     }
   }
 
@@ -48,11 +62,47 @@ function BalanceRow({ balance }) {
         <td className="px-4 py-3">{balance.usedDays}</td>
         <td className="px-4 py-3">{balance.pendingDays}</td>
         <td className="px-4 py-3 text-slate-500">{balance.totalDays - balance.usedDays - balance.pendingDays}</td>
+        <td className="px-4 py-3 text-right">
+          <button
+            onClick={() => setConfirmingReset(true)}
+            disabled={balance.usedDays > 0 || balance.pendingDays > 0}
+            title={
+              balance.usedDays > 0 || balance.pendingDays > 0
+                ? "Can't reset a balance with used or pending days"
+                : "Reset to the policy default"
+            }
+            className="text-xs text-red-500 hover:underline disabled:text-slate-300 disabled:no-underline disabled:cursor-not-allowed dark:disabled:text-slate-700"
+          >
+            Reset
+          </button>
+        </td>
       </tr>
+      {balance.leavePolicy.accrualPerMonth && (
+        <tr>
+          <td colSpan={6} className="px-4 pb-2 text-xs text-slate-400">
+            Accrues {balance.leavePolicy.accrualPerMonth} day(s)/month — any days not taken in a given month stay
+            available and carry forward to the next month automatically.
+          </td>
+        </tr>
+      )}
       {error && (
         <tr>
-          <td colSpan={5} className="px-4 pb-2 text-xs text-red-600">
+          <td colSpan={6} className="px-4 pb-2 text-xs text-red-600">
             {error}
+          </td>
+        </tr>
+      )}
+      {confirmingReset && (
+        <tr>
+          <td colSpan={6} className="p-0">
+            <ConfirmModal
+              title="Reset this leave balance?"
+              message={`Reset the ${balance.leavePolicy.leaveType} balance to the policy default? It will be recalculated fresh next time it's viewed.`}
+              confirmLabel="Reset"
+              pending={deleteBalance.isPending}
+              onCancel={() => setConfirmingReset(false)}
+              onConfirm={resetBalance}
+            />
           </td>
         </tr>
       )}
@@ -67,7 +117,14 @@ export default function AdminLeaveBalancesPage() {
   const [year, setYear] = useState(new Date().getFullYear());
 
   const { data: searchResults } = useEmployees({ search, page: 1, pageSize: 8 });
+  const { data: allEmployees } = useEmployees({ page: 1, pageSize: 20 });
   const { data: balances, isLoading } = useLeaveBalances({ employeeId, year }, { enabled: Boolean(employeeId) });
+
+  function selectEmployee(emp) {
+    setEmployeeId(emp.id);
+    setEmployeeLabel(`${emp.firstName} ${emp.lastName}`);
+    setSearch("");
+  }
 
   return (
     <div className="space-y-4">
@@ -90,11 +147,7 @@ export default function AdminLeaveBalancesPage() {
                 <li key={emp.id}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setEmployeeId(emp.id);
-                      setEmployeeLabel(`${emp.firstName} ${emp.lastName}`);
-                      setSearch("");
-                    }}
+                    onClick={() => selectEmployee(emp)}
                     className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     {emp.firstName} {emp.lastName} <span className="text-slate-400">· {emp.employeeCode}</span>
@@ -116,7 +169,30 @@ export default function AdminLeaveBalancesPage() {
         </div>
       </div>
 
-      {!employeeId && <p className="text-slate-400 text-sm">Search for an employee to view and correct their leave balances.</p>}
+      {!employeeId && (
+        <div className="space-y-2">
+          <p className="text-slate-400 text-sm">Search for an employee, or pick one below, to view and correct their leave balances.</p>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            {allEmployees?.items.length === 0 && (
+              <li className="px-4 py-3 text-sm text-slate-400">No employees yet.</li>
+            )}
+            {allEmployees?.items.map((emp) => (
+              <li key={emp.id}>
+                <button
+                  type="button"
+                  onClick={() => selectEmployee(emp)}
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <span className="font-medium text-slate-900 dark:text-slate-50">
+                    {emp.firstName} {emp.lastName}
+                  </span>
+                  <span className="text-slate-400"> · {emp.employeeCode}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {employeeId && (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -128,12 +204,13 @@ export default function AdminLeaveBalancesPage() {
                 <th className="px-4 py-3 font-medium">Used</th>
                 <th className="px-4 py-3 font-medium">Pending</th>
                 <th className="px-4 py-3 font-medium">Available</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400">Loading…</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">Loading…</td>
                 </tr>
               )}
               {balances?.map((b) => (

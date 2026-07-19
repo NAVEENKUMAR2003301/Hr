@@ -23,8 +23,25 @@ export function AuthProvider({ children }) {
       .catch(() => dispatch({ type: "SET_USER", user: null }));
   }, []);
 
+  // Fired by the axios interceptor when a silent token refresh fails — the session
+  // is genuinely gone, so drop to "anonymous" here rather than leaving whatever
+  // page the user was on stuck with a raw 401 error and no way out.
+  useEffect(() => {
+    function handleSessionExpired() {
+      dispatch({ type: "SET_USER", user: null });
+    }
+    window.addEventListener("auth:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("auth:session-expired", handleSessionExpired);
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
+    dispatch({ type: "SET_USER", user: res.data.user });
+    return res.data.user;
+  }, []);
+
+  const signup = useCallback(async (data) => {
+    const res = await api.post("/auth/signup", data);
     dispatch({ type: "SET_USER", user: res.data.user });
     return res.data.user;
   }, []);
@@ -36,5 +53,5 @@ export function AuthProvider({ children }) {
 
   const setUser = useCallback((user) => dispatch({ type: "SET_USER", user }), []);
 
-  return <AuthContext.Provider value={{ ...state, login, logout, setUser }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ ...state, login, signup, logout, setUser }}>{children}</AuthContext.Provider>;
 }

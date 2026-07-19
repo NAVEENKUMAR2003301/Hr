@@ -22,6 +22,35 @@ export function offerLetterEmail({ firstName, lastName, designation }) {
   };
 }
 
+// Renders HR's freely-edited plain-text letter (from the "Edit & Send" modal) through
+// the same styled wrapper as the fixed templates — blank lines become paragraph
+// breaks, everything else is escaped so a candidate's name/address can't inject HTML.
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function wrapPlainTextLetter(content) {
+  const paragraphs = content
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p style="white-space: pre-line;">${escapeHtml(p)}</p>`)
+    .join("\n");
+  return wrapper(paragraphs);
+}
+
+export function passwordResetEmail({ name, resetUrl }) {
+  return {
+    subject: "Reset your Stackly password",
+    html: wrapper(`
+      <p>Hi ${name || "there"},</p>
+      <p>We received a request to reset your Stackly password. Click the link below to choose a new one — it expires in 1 hour.</p>
+      <p><a href="${resetUrl}" style="color: #4f46e5;">Reset your password</a></p>
+      <p>If you didn't request this, you can safely ignore this email — your password won't change.</p>
+    `),
+  };
+}
+
 export function appointmentLetterEmail({ firstName, lastName, joiningDate }) {
   return {
     subject: "Your Appointment Letter — Stackly",

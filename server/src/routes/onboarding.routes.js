@@ -9,6 +9,7 @@ import {
   setPaymentStatus,
   sendOfferLetter,
   sendAppointmentLetter,
+  removeProcess,
 } from "../controllers/onboarding.controller.js";
 
 const router = Router();
@@ -23,5 +24,6 @@ router.patch("/:processId/dates", roleMiddleware(["ADMIN"]), updateDates);
 router.post("/:processId/payment", roleMiddleware(["ADMIN"]), setPaymentStatus);
 router.post("/:processId/offer-letter", roleMiddleware(["ADMIN"]), sendOfferLetter);
 router.post("/:processId/appointment-letter", roleMiddleware(["ADMIN"]), sendAppointmentLetter);
+router.delete("/:processId", roleMiddleware(["ADMIN"]), removeProcess);
 
 export default router;

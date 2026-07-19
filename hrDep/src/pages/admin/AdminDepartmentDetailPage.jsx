@@ -30,6 +30,18 @@ export default function AdminDepartmentDetailPage() {
             {department.head ? `${department.head.firstName} ${department.head.lastName}` : "Unassigned"}
           </p>
         </div>
+        {department.head && (
+          <>
+            <div>
+              <p className="text-slate-500">Employee ID</p>
+              <p className="font-medium text-slate-900 dark:text-slate-50">{department.head.employeeCode}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Role</p>
+              <p className="font-medium text-slate-900 dark:text-slate-50">{department.head.user?.role ?? "—"}</p>
+            </div>
+          </>
+        )}
         <div>
           <p className="text-slate-500">Employees</p>
           <p className="font-medium text-slate-900 dark:text-slate-50">{department._count?.employees ?? 0}</p>
@@ -50,6 +62,7 @@ export default function AdminDepartmentDetailPage() {
               <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500">
                 <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Role</th>
                 <th className="px-4 py-3 font-medium">Designation</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Joined</th>
@@ -58,12 +71,12 @@ export default function AdminDepartmentDetailPage() {
             <tbody>
               {employeesLoading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400">Loading…</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">Loading…</td>
                 </tr>
               )}
               {!employeesLoading && employees?.items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400">No employees in this department yet.</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">No employees in this department yet.</td>
                 </tr>
               )}
               {employees?.items.map((emp) => (
@@ -74,6 +87,7 @@ export default function AdminDepartmentDetailPage() {
                       {emp.firstName} {emp.lastName}
                     </Link>
                   </td>
+                  <td className="px-4 py-3">{emp.user?.role ?? "—"}</td>
                   <td className="px-4 py-3">{emp.designation?.title ?? "—"}</td>
                   <td className="px-4 py-3">{emp.employmentStatus}</td>
                   <td className="px-4 py-3">{formatDate(emp.joiningDate)}</td>

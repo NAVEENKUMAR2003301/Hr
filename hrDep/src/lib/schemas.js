@@ -19,6 +19,21 @@ export const loginSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+export const signupSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email(),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  signupCode: z.string().min(1, "Sign-up code is required"),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 // Mirrors server/src/validators/employee.validator.js — split per wizard step
 // so each step can be validated independently before advancing.
 export const personalInfoSchema = z.object({

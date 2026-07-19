@@ -7,10 +7,11 @@ import { useAuth } from "../../features/auth/useAuth";
 const NAV_ITEMS = [
   { to: "/admin", label: "Dashboard", end: true },
   { to: "/admin/employees", label: "Employees" },
+  { to: "/admin/id-cards", label: "ID Cards" },
   { to: "/admin/departments", label: "Departments" },
   { to: "/admin/leaves", label: "Leaves" },
   { to: "/admin/onboarding", label: "Onboarding" },
-  { to: "/admin/performance", label: "Performance" },
+  { to: "/admin/activity-log", label: "Activity Log" },
 ];
 
 function SidebarContent({ user, logout, onNavigate }) {

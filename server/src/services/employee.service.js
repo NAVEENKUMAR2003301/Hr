@@ -1,10 +1,20 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
+import { withTransactionRetry } from "../lib/withTransactionRetry.js";
 import { createOnboardingForEmployee } from "./onboarding.service.js";
 import { ensureLeaveBalances } from "./leaveBalance.service.js";
 
-export async function listEmployees({ page = 1, pageSize = 20, search = "", departmentId, employmentStatus, includeTerminated = false }) {
+export async function listEmployees({
+  page = 1,
+  pageSize = 20,
+  search = "",
+  departmentId,
+  employmentStatus,
+  includeTerminated = false,
+  managerScopeId,
+  idCardProvided,
+}) {
   const where = {
     AND: [
       search
@@ -21,13 +31,17 @@ export async function listEmployees({ page = 1, pageSize = 20, search = "", depa
       // Deactivated employees stay in the DB (for history) but are hidden from the
       // default directory view unless explicitly requested or filtered for.
       employmentStatus ? { employmentStatus } : includeTerminated ? {} : { employmentStatus: { not: "TERMINATED" } },
+      // MANAGER-role callers only get their own direct reports, not the full company
+      // directory — set by the controller from the authenticated user, never client input.
+      managerScopeId ? { managerId: managerScopeId } : {},
+      idCardProvided === undefined ? {} : { idCardProvided },
     ],
   };
 
   const [items, total] = await Promise.all([
     prisma.employee.findMany({
       where,
-      include: { department: true, designation: true },
+      include: { department: true, designation: true, user: { select: { role: true } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -50,13 +64,17 @@ function orNull(value) {
   return value === "" ? null : value;
 }
 
-// Creates the User + Employee + auto-generated OnboardingProcess atomically,
-// so a partially-created employee (e.g. no onboarding) can never exist.
-export async function createEmployee(data) {
+// Creates the User + Employee atomically, so a partially-created employee (e.g. a
+// user with no employee row) can never exist. `createOnboarding` defaults to false —
+// the full Add Employee form (this function's main caller) is for people who are
+// already fully hired, not going through onboarding tracking; only the dedicated
+// "New Candidate" intake (createCandidate, below) opts into it, so the Onboarding
+// page's list only ever shows people HR is actually onboarding.
+export async function createEmployee(data, { createOnboarding = false } = {}) {
   const temporaryPassword = crypto.randomBytes(9).toString("base64url");
   const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
-  const employee = await prisma.$transaction(async (tx) => {
+  const employee = await withTransactionRetry(async (tx) => {
     const user = await tx.user.create({
       data: { email: data.email, passwordHash, role: data.role ?? "EMPLOYEE" },
     });
@@ -81,7 +99,7 @@ export async function createEmployee(data) {
       },
     });
 
-    await createOnboardingForEmployee(tx, employee.id);
+    if (createOnboarding) await createOnboardingForEmployee(tx, employee.id);
     await ensureLeaveBalances(tx, employee.id, employee.joiningDate.getFullYear());
 
     return employee;
@@ -90,6 +108,29 @@ export async function createEmployee(data) {
   // NOTE: no email service yet — the temp password is surfaced to the admin in the API
   // response so it can be handed to the new hire out-of-band, instead of being silently lost.
   return { employee, temporaryPassword };
+}
+
+// Onboarding's lightweight "New Candidate" intake — only name/phone/email/address
+// are asked; everything else createEmployee needs gets a sensible default so HR
+// isn't forced through the full employee wizard just to start a candidate's
+// onboarding paperwork. Unlike the full form, this always creates the onboarding
+// process — that's the whole point of this entry point.
+export async function createCandidate(data) {
+  const employeeCode = await suggestNextEmployeeCode();
+  return createEmployee(
+    {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phoneNumber: data.phoneNumber,
+      personalEmail: data.email,
+      address: data.address,
+      employeeCode,
+      email: data.email,
+      role: "EMPLOYEE",
+      employmentType: "FULL_TIME",
+    },
+    { createOnboarding: true }
+  );
 }
 
 export function sanitizeEmployeeUpdate(data) {
@@ -107,7 +148,7 @@ export function sanitizeEmployeeUpdate(data) {
 export async function updateEmployee(id, data) {
   const { role, ...employeeData } = sanitizeEmployeeUpdate(data);
 
-  return prisma.$transaction(async (tx) => {
+  return withTransactionRetry(async (tx) => {
     const employee = await tx.employee.update({ where: { id }, data: employeeData });
 
     if (role) {

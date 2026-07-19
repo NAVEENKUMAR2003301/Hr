@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLeaveRequests } from "../../api/useLeaves";
 import LeaveApprovalCard from "../../features/leaves/LeaveApprovalCard";
+import MarkLeaveSection from "../../features/leaves/MarkLeaveSection";
 import { useAuth } from "../../features/auth/useAuth";
 
 export default function AdminLeaveRequestsPage() {
@@ -12,6 +13,10 @@ export default function AdminLeaveRequestsPage() {
 
   return (
     <div className="space-y-4">
+      {/* Mark-leave is an ADMIN-only shortcut server-side — only show it to ADMIN,
+          not MANAGER, so the button isn't there just to fail with 403 on click. */}
+      {user.role === "ADMIN" && <MarkLeaveSection />}
+
       <div className="flex justify-end">
         <select
           value={status}
@@ -27,7 +32,6 @@ export default function AdminLeaveRequestsPage() {
 
       <div className="space-y-3">
         {isLoading && <p className="text-slate-400">Loading…</p>}
-        {!isLoading && data?.length === 0 && <p className="text-slate-400">No requests in this status.</p>}
         {data?.map((req) => (
           <LeaveApprovalCard key={req.id} request={req} stage={stage} />
         ))}

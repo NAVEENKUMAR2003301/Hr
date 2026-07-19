@@ -17,6 +17,7 @@ import onboardingTemplateRoutes from "./routes/onboardingTemplate.routes.js";
 import performanceRoutes from "./routes/performance.routes.js";
 import feedbackCategoryRoutes from "./routes/feedbackCategory.routes.js";
 import holidayRoutes from "./routes/holiday.routes.js";
+import auditLogRoutes from "./routes/auditLog.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { ownershipMiddleware } from "./middleware/ownership.js";
@@ -43,16 +44,26 @@ app.use("/api/onboarding-templates", onboardingTemplateRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/feedback-categories", feedbackCategoryRoutes);
 app.use("/api/holidays", holidayRoutes);
+app.use("/api/audit-log", auditLogRoutes);
 
 // Employee documents are PII (ID proofs, etc.) — gate them behind the same auth +
 // ownership check as the employee record itself, instead of a blanket express.static
 // that would let anyone with the URL download a file unauthenticated.
+const SAFE_DOCUMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", ".webp", ".doc", ".docx"]);
+
 app.get(
   "/uploads/employee-documents/:id/:filename",
   authMiddleware,
   ownershipMiddleware("id"),
   (req, res) => {
-    const filePath = path.join(UPLOAD_ROOT, req.params.id, req.params.filename);
+    // path.basename strips any directory components regardless of encoding tricks
+    // (e.g. an encoded "../"), so this can never resolve outside UPLOAD_ROOT/:id.
+    const safeName = path.basename(req.params.filename);
+    if (!SAFE_DOCUMENT_EXTENSIONS.has(path.extname(safeName).toLowerCase())) {
+      return res.status(400).json({ error: "Unsupported file type" });
+    }
+
+    const filePath = path.join(UPLOAD_ROOT, req.params.id, safeName);
     res.sendFile(filePath, (err) => {
       if (err && !res.headersSent) res.status(404).json({ error: "File not found" });
     });

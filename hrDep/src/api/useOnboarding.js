@@ -17,15 +17,25 @@ export function useSetOnboardingPayment() {
 }
 
 export function useSendOfferLetter() {
-  return useOnboardingMutation(async (processId) => (await api.post(`/onboarding/${processId}/offer-letter`)).data);
+  return useOnboardingMutation(
+    async ({ processId, content }) => (await api.post(`/onboarding/${processId}/offer-letter`, { content })).data
+  );
 }
 
 export function useSendAppointmentLetter() {
-  return useOnboardingMutation(async (processId) => (await api.post(`/onboarding/${processId}/appointment-letter`)).data);
+  return useOnboardingMutation(
+    async ({ processId, content }) => (await api.post(`/onboarding/${processId}/appointment-letter`, { content })).data
+  );
 }
 
 export function useUpdateOnboardingDates() {
   return useOnboardingMutation(
     async ({ processId, ...dates }) => (await api.patch(`/onboarding/${processId}/dates`, dates)).data
   );
+}
+
+// Removes the onboarding process/checklist only — the employee record and their
+// login are untouched (see server/src/controllers/onboarding.controller.js removeProcess).
+export function useDeleteOnboardingProcess() {
+  return useOnboardingMutation(async (processId) => (await api.delete(`/onboarding/${processId}`)).data);
 }

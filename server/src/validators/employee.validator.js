@@ -39,3 +39,15 @@ export const updateEmployeeSchema = personalInfoSchema
   .extend(employmentInfoSchema.shape)
   .extend({ role: roleAccessSchema.shape.role })
   .partial();
+
+// Lightweight onboarding intake — just the basics a candidate form collects
+// (name/phone/email/address). Employee code, role, employment type, and joining
+// date are all filled in with sensible defaults server-side (see
+// employee.service.js candidateIntakeDefaults) rather than asked on this form.
+export const candidateIntakeSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  phoneNumber: z.string().min(1),
+  email: z.string().email(),
+  address: z.string().optional(),
+});

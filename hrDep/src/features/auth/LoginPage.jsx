@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { loginSchema } from "../../lib/schemas";
 import Logo from "../../components/Logo";
@@ -96,6 +96,15 @@ export default function LoginPage() {
           >
             {submitting ? "Signing in…" : "Sign in"}
           </button>
+
+          <div className="flex items-center justify-between text-sm">
+            <Link to="/signup" className="font-medium text-indigo-600 hover:underline">
+              HR sign up
+            </Link>
+            <Link to="/forgot-password" className="font-medium text-indigo-600 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
         </form>
       </div>
     </div>
