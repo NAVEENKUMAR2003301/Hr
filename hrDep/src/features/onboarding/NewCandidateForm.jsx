@@ -55,8 +55,45 @@ function DocumentUploadRow({ employeeId, slot, uploaded, onUploaded }) {
   );
 }
 
+// Plain text fields HR fills in freely — no fixed options, matches how HR already
+// tracks this in their own sheet (see server/src/validators/employee.validator.js
+// pipelineFieldsSchema for the field list this mirrors).
+const TEXT_FIELDS = [
+  { key: "forReference", label: "For my reference" },
+  { key: "designation", label: "Designation" },
+  { key: "experienceLevel", label: "Fresher / Experience" },
+  { key: "relevantExperience", label: "Relevant experience" },
+  { key: "trainingKt", label: "Training/KT" },
+  { key: "phoneNumber", label: "Mobile number" },
+  { key: "trainingStipend", label: "Training on salary/stipend" },
+  { key: "technicalRound", label: "Technical round" },
+  { key: "hrRound", label: "HR round" },
+  { key: "currentCtc", label: "Current CTC" },
+  { key: "expectedCtc", label: "Expected CTC" },
+  { key: "docUpdates", label: "Doc updates" },
+  { key: "trainingStatus", label: "Training status" },
+  { key: "liveProject", label: "Live project" },
+];
+
+const CHECKBOX_FIELDS = [
+  { key: "selectionMailSent", label: "Selection mail sent" },
+  { key: "offerGiven", label: "Offer letter given" },
+  { key: "appointmentLetterGiven", label: "Appointment letter given" },
+];
+
+const initialForm = {
+  name: "",
+  email: "",
+  onboardingStatus: "IN_PROGRESS",
+  onboardingDate: "",
+  selectionMailSent: false,
+  offerGiven: false,
+  appointmentLetterGiven: false,
+  ...Object.fromEntries(TEXT_FIELDS.map((f) => [f.key, ""])),
+};
+
 export default function NewCandidateForm({ onDone }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", phoneNumber: "", email: "", address: "" });
+  const [form, setForm] = useState(initialForm);
   const [error, setError] = useState(null);
   const [created, setCreated] = useState(null); // { employee, temporaryPassword }
   const [uploadedDocs, setUploadedDocs] = useState(new Set());
@@ -69,8 +106,8 @@ export default function NewCandidateForm({ onDone }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.phoneNumber.trim() || !form.email.trim()) {
-      setError("Name, phone number, and email are required");
+    if (!form.name.trim() || !form.email.trim()) {
+      setError("Name and email are required");
       return;
     }
     try {
@@ -132,25 +169,54 @@ export default function NewCandidateForm({ onDone }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">First name</label>
-          <input className={inputClass} value={form.firstName} onChange={(e) => set("firstName", e.target.value)} />
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
+          <input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Last name</label>
-          <input className={inputClass} value={form.lastName} onChange={(e) => set("lastName", e.target.value)} />
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Mail ID</label>
+          <input className={inputClass} value={form.email} onChange={(e) => set("email", e.target.value)} />
         </div>
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Phone number</label>
-        <input className={inputClass} value={form.phoneNumber} onChange={(e) => set("phoneNumber", e.target.value)} />
+
+      <div className="grid grid-cols-2 gap-4">
+        {TEXT_FIELDS.map(({ key, label }) => (
+          <div key={key} className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</label>
+            <input className={inputClass} value={form[key]} onChange={(e) => set(key, e.target.value)} />
+          </div>
+        ))}
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-        <input className={inputClass} value={form.email} onChange={(e) => set("email", e.target.value)} />
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Onboarding status</label>
+          <select
+            className={inputClass}
+            value={form.onboardingStatus}
+            onChange={(e) => set("onboardingStatus", e.target.value)}
+          >
+            <option value="IN_PROGRESS">In progress</option>
+            <option value="COMPLETED">Completed</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Onboarding date</label>
+          <input
+            type="date"
+            className={inputClass}
+            value={form.onboardingDate}
+            onChange={(e) => set("onboardingDate", e.target.value)}
+          />
+        </div>
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Address</label>
-        <textarea rows={2} className={inputClass} value={form.address} onChange={(e) => set("address", e.target.value)} />
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+        {CHECKBOX_FIELDS.map(({ key, label }) => (
+          <label key={key} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <input type="checkbox" checked={form[key]} onChange={(e) => set(key, e.target.checked)} />
+            {label}
+          </label>
+        ))}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

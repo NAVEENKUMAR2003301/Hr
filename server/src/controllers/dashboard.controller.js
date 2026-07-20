@@ -28,7 +28,11 @@ export async function summary(req, res, next) {
       prisma.leaveRequest.findMany({
         take: RECENT_LIMIT,
         orderBy: { createdAt: "desc" },
-        include: { employee: true, leavePolicy: true },
+        include: {
+          employee: true,
+          leavePolicy: true,
+          hrApprovedByUser: { select: { name: true, email: true } },
+        },
       }),
       prisma.onboardingTaskItem.findMany({
         take: RECENT_LIMIT,

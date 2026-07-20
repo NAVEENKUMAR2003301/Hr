@@ -14,17 +14,18 @@ function LeaveHistory() {
             <th className="px-4 py-3 font-medium">Type</th>
             <th className="px-4 py-3 font-medium">Dates</th>
             <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 font-medium">Approved by</th>
           </tr>
         </thead>
         <tbody>
           {isLoading && (
             <tr>
-              <td colSpan={3} className="px-4 py-6 text-center text-slate-400">Loading…</td>
+              <td colSpan={4} className="px-4 py-6 text-center text-slate-400">Loading…</td>
             </tr>
           )}
           {!isLoading && data?.length === 0 && (
             <tr>
-              <td colSpan={3} className="px-4 py-6 text-center text-slate-400">No leave requests yet.</td>
+              <td colSpan={4} className="px-4 py-6 text-center text-slate-400">No leave requests yet.</td>
             </tr>
           )}
           {data?.map((req) => (
@@ -34,6 +35,15 @@ function LeaveHistory() {
                 {formatDate(req.startDate)} – {formatDate(req.endDate)}
               </td>
               <td className="px-4 py-3">{req.status}</td>
+              <td className="px-4 py-3 text-slate-500">
+                {req.hrApprovedByUser
+                  ? `${req.hrApprovedByUser.name ?? req.hrApprovedByUser.email} (HR)`
+                  : req.hrApproval
+                    ? `${req.hrApproval.firstName} ${req.hrApproval.lastName} (HR)`
+                    : req.managerApproval
+                      ? `${req.managerApproval.firstName} ${req.managerApproval.lastName} (Manager)`
+                      : "—"}
+              </td>
             </tr>
           ))}
         </tbody>

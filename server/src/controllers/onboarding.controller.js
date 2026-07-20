@@ -3,6 +3,8 @@ import { prisma } from "../lib/prisma.js";
 import { sendEmail } from "../services/email.service.js";
 import { offerLetterEmail, appointmentLetterEmail, wrapPlainTextLetter } from "../services/emailTemplates.js";
 import { recordAudit } from "../services/auditLog.service.js";
+import { updateOnboardingPipeline } from "../services/onboarding.service.js";
+import { updatePipelineSchema } from "../validators/employee.validator.js";
 
 export async function listProcesses(req, res, next) {
   try {
@@ -43,6 +45,25 @@ export async function updateDates(req, res, next) {
   try {
     const data = dateFieldsSchema.parse(req.body);
     const process = await prisma.onboardingProcess.update({ where: { id: req.params.processId }, data });
+    res.json(process);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Backs the Candidate Details modal's editable "Recruitment pipeline" section —
+// every field from the New Candidate intake form stays editable afterward.
+export async function updatePipeline(req, res, next) {
+  try {
+    const data = updatePipelineSchema.parse(req.body);
+    const process = await updateOnboardingPipeline(req.params.processId, data);
+    await recordAudit({
+      userId: req.user.id,
+      action: "onboarding.updatePipeline",
+      entityType: "OnboardingProcess",
+      entityId: process.id,
+      summary: `Updated recruitment pipeline fields (${Object.keys(data).join(", ")})`,
+    });
     res.json(process);
   } catch (err) {
     next(err);

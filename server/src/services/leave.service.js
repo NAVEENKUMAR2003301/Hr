@@ -66,7 +66,7 @@ const EXPECTED_STATUS_FOR_STAGE = { MANAGER: "PENDING", HR: "APPROVED_BY_MANAGER
 // employee's leave, not just their own reports. ADMIN bypasses the manager-identity
 // check (HR/admin can act as a stand-in manager) but not the status guard.
 export async function decideLeaveRequest(requestId, approver, stage, decision, comment) {
-  const { employeeId: approverEmployeeId, role: approverRole } = approver;
+  const { employeeId: approverEmployeeId, role: approverRole, userId: approverUserId } = approver;
 
   return withTransactionRetry(async (tx) => {
     const request = await tx.leaveRequest.findUnique({
@@ -95,7 +95,7 @@ export async function decideLeaveRequest(requestId, approver, stage, decision, c
         data:
           stage === "MANAGER"
             ? { status: "REJECTED", managerApprovalId: approverEmployeeId, managerComment: comment }
-            : { status: "REJECTED", hrApprovalId: approverEmployeeId, hrComment: comment },
+            : { status: "REJECTED", hrApprovalId: approverEmployeeId, hrApprovedByUserId: approverUserId, hrComment: comment },
       });
       await tx.leaveBalance.updateMany({
         where: { employeeId: request.employeeId, leavePolicyId: request.leavePolicyId, year },
@@ -119,7 +119,7 @@ export async function decideLeaveRequest(requestId, approver, stage, decision, c
 
     return tx.leaveRequest.update({
       where: { id: requestId },
-      data: { status: "APPROVED_BY_HR", hrApprovalId: approverEmployeeId, hrComment: comment },
+      data: { status: "APPROVED_BY_HR", hrApprovalId: approverEmployeeId, hrApprovedByUserId: approverUserId, hrComment: comment },
     });
   });
 }
@@ -127,8 +127,10 @@ export async function decideLeaveRequest(requestId, approver, stage, decision, c
 // HR one-click "mark this employee as on leave today" — skips the employee-apply +
 // manager/HR-approve flow entirely and records an already-APPROVED_BY_HR request
 // for `date`, deducting straight from usedDays. Reuses the same row-lock + balance
-// + overlap checks as createLeaveRequest so it can't overdraw or double-book either.
-export async function markLeave(employeeId, leaveType, rawDate, approverEmployeeId) {
+// checks as createLeaveRequest so it can't overdraw, but the overlap guard below is
+// scoped to the same leave TYPE only — HR can mark an employee for e.g. both Casual
+// and Sick the same day (two separate policies/balances), just not the same type twice.
+export async function markLeave(employeeId, leaveType, rawDate, approverEmployeeId, approverUserId) {
   // Truncate to the calendar day — `rawDate` carries whatever time-of-day HR
   // clicked the button (or `new Date()`'s current instant), and comparing that
   // millisecond-precision value against another request's start/end (also
@@ -155,13 +157,14 @@ export async function markLeave(employeeId, leaveType, rawDate, approverEmployee
     const overlapping = await tx.leaveRequest.findFirst({
       where: {
         employeeId,
+        leavePolicyId: policy.id,
         status: { in: ["PENDING", "APPROVED_BY_MANAGER", "APPROVED_BY_HR"] },
         startDate: { lte: date },
         endDate: { gte: date },
       },
     });
     if (overlapping) {
-      throw Object.assign(new Error("Already has a leave request covering that date"), { status: 400 });
+      throw Object.assign(new Error(`Already has a ${leaveType.toLowerCase()} leave request covering that date`), { status: 400 });
     }
 
     const request = await tx.leaveRequest.create({
@@ -173,6 +176,7 @@ export async function markLeave(employeeId, leaveType, rawDate, approverEmployee
         reason: "Marked directly by HR",
         status: "APPROVED_BY_HR",
         hrApprovalId: approverEmployeeId,
+        hrApprovedByUserId: approverUserId,
       },
     });
 

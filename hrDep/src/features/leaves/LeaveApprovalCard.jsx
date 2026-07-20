@@ -58,10 +58,23 @@ export default function LeaveApprovalCard({ request, stage }) {
           </div>
         </>
       ) : (
-        <p className="text-xs text-slate-400">
-          {request.managerComment && `Manager: "${request.managerComment}"`}
-          {request.hrComment && ` HR: "${request.hrComment}"`}
-        </p>
+        <div className="space-y-1 text-xs text-slate-400">
+          {request.managerApproval && (
+            <p>
+              Manager stage: {request.managerApproval.firstName} {request.managerApproval.lastName}
+              {request.managerComment && ` — "${request.managerComment}"`}
+            </p>
+          )}
+          {(request.hrApprovedByUser || request.hrApproval) && (
+            <p>
+              HR stage:{" "}
+              {request.hrApprovedByUser
+                ? request.hrApprovedByUser.name ?? request.hrApprovedByUser.email
+                : `${request.hrApproval.firstName} ${request.hrApproval.lastName}`}
+              {request.hrComment && ` — "${request.hrComment}"`}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

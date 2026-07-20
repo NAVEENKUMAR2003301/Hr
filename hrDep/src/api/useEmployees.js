@@ -25,7 +25,8 @@ export function useCreateEmployee() {
   });
 }
 
-// Onboarding's lightweight intake (name/phone/email/address only) — see
+// Onboarding's intake — name/email plus recruitment-pipeline fields (referral,
+// domain, interview rounds, offer/appointment letter, onboarding date). See
 // server/src/services/employee.service.js createCandidate for the defaults it fills in.
 export function useCreateCandidate() {
   const queryClient = useQueryClient();

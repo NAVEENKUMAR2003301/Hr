@@ -24,7 +24,12 @@ export async function myRequests(req, res, next) {
     const requests = await prisma.leaveRequest.findMany({
       where: { employeeId: req.user.employeeId },
       orderBy: { createdAt: "desc" },
-      include: { leavePolicy: true },
+      include: {
+        leavePolicy: true,
+        managerApproval: { select: { firstName: true, lastName: true } },
+        hrApproval: { select: { firstName: true, lastName: true } },
+        hrApprovedByUser: { select: { name: true, email: true } },
+      },
     });
     res.json(requests);
   } catch (err) {
@@ -51,7 +56,13 @@ export async function listAll(req, res, next) {
         employee: departmentId ? { departmentId } : undefined,
       },
       orderBy: { createdAt: "desc" },
-      include: { employee: true, leavePolicy: true },
+      include: {
+        employee: true,
+        leavePolicy: true,
+        managerApproval: { select: { firstName: true, lastName: true } },
+        hrApproval: { select: { firstName: true, lastName: true } },
+        hrApprovedByUser: { select: { name: true, email: true } },
+      },
     });
     res.json(requests);
   } catch (err) {
@@ -87,7 +98,7 @@ export async function hrDecision(req, res, next) {
     const { decision, comment } = decisionSchema.parse(req.body);
     const request = await decideLeaveRequest(
       req.params.id,
-      { employeeId: req.user.employeeId, role: req.user.role },
+      { employeeId: req.user.employeeId, role: req.user.role, userId: req.user.id },
       "HR",
       decision,
       comment
@@ -124,7 +135,7 @@ export async function cancelRequest(req, res, next) {
 export async function mark(req, res, next) {
   try {
     const { employeeId, leaveType, date } = markLeaveSchema.parse(req.body);
-    const request = await markLeave(employeeId, leaveType, date ?? new Date(), req.user.employeeId);
+    const request = await markLeave(employeeId, leaveType, date ?? new Date(), req.user.employeeId, req.user.id);
     await recordAudit({
       userId: req.user.id,
       action: "leave.mark",

@@ -90,9 +90,16 @@ export default function AdminDashboardPage() {
                       {l.leavePolicy.leaveType} · {formatDate(l.startDate)} – {formatDate(l.endDate)}
                     </p>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${LEAVE_STATUS_STYLE[l.status] ?? "bg-slate-100 text-slate-700"}`}>
-                    {l.status.replaceAll("_", " ")}
-                  </span>
+                  <div className="text-right">
+                    <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${LEAVE_STATUS_STYLE[l.status] ?? "bg-slate-100 text-slate-700"}`}>
+                      {l.status.replaceAll("_", " ")}
+                    </span>
+                    {l.hrApprovedByUser && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        by {l.hrApprovedByUser.name ?? l.hrApprovedByUser.email}
+                      </p>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

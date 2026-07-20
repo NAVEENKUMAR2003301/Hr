@@ -10,6 +10,7 @@ import {
   sendOfferLetter,
   sendAppointmentLetter,
   removeProcess,
+  updatePipeline,
 } from "../controllers/onboarding.controller.js";
 
 const router = Router();
@@ -21,6 +22,7 @@ router.get("/me", myProcess);
 router.patch("/tasks/:taskId/complete", completeTask);
 
 router.patch("/:processId/dates", roleMiddleware(["ADMIN"]), updateDates);
+router.patch("/:processId/pipeline", roleMiddleware(["ADMIN"]), updatePipeline);
 router.post("/:processId/payment", roleMiddleware(["ADMIN"]), setPaymentStatus);
 router.post("/:processId/offer-letter", roleMiddleware(["ADMIN"]), sendOfferLetter);
 router.post("/:processId/appointment-letter", roleMiddleware(["ADMIN"]), sendAppointmentLetter);

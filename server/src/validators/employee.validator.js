@@ -40,14 +40,40 @@ export const updateEmployeeSchema = personalInfoSchema
   .extend({ role: roleAccessSchema.shape.role })
   .partial();
 
-// Lightweight onboarding intake — just the basics a candidate form collects
-// (name/phone/email/address). Employee code, role, employment type, and joining
-// date are all filled in with sensible defaults server-side (see
-// employee.service.js candidateIntakeDefaults) rather than asked on this form.
-export const candidateIntakeSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  phoneNumber: z.string().min(1),
-  email: z.string().email(),
-  address: z.string().optional(),
+// Onboarding's "New Candidate" intake — tracks the full recruitment pipeline (HR's
+// own reference note, designation, experience, interview rounds, CTC, offer/
+// appointment letter, onboarding status) rather than full employee details.
+// Employee code, role, and employment type all get sensible defaults server-side
+// (see employee.service.js createCandidate).
+const pipelineFieldsSchema = z.object({
+  forReference: z.string().optional(),
+  designation: z.string().optional(),
+  experienceLevel: z.string().optional(),
+  relevantExperience: z.string().optional(),
+  trainingKt: z.string().optional(),
+  technicalRound: z.string().optional(),
+  hrRound: z.string().optional(),
+  currentCtc: z.string().optional(),
+  expectedCtc: z.string().optional(),
+  trainingStipend: z.string().optional(),
+  selectionMailSent: z.boolean().default(false),
+  docUpdates: z.string().optional(),
+  offerGiven: z.boolean().default(false),
+  appointmentLetterGiven: z.boolean().default(false),
+  onboardingStatus: z.enum(["IN_PROGRESS", "COMPLETED"]).optional(),
+  trainingStatus: z.string().optional(),
+  liveProject: z.string().optional(),
+  onboardingDate: optionalDate,
 });
+
+export const candidateIntakeSchema = z
+  .object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    phoneNumber: z.string().optional(),
+  })
+  .extend(pipelineFieldsSchema.shape);
+
+// Same pipeline fields, editable later from the Candidate Details modal — every
+// field optional since this is a partial update, not a fresh intake.
+export const updatePipelineSchema = pipelineFieldsSchema.partial();

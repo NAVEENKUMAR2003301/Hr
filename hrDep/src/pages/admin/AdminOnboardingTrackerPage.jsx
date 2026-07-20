@@ -13,6 +13,7 @@ import {
 import Modal from "../../components/Modal";
 import ConfirmModal from "../../components/ConfirmModal";
 import NewCandidateForm from "../../features/onboarding/NewCandidateForm";
+import CandidateExcelImportExport from "../../features/onboarding/CandidateExcelImportExport";
 import EditLetterModal from "../../features/onboarding/EditLetterModal";
 import CandidateDetailsModal from "../../features/onboarding/CandidateDetailsModal";
 import { offerLetterDefaultText, appointmentLetterDefaultText } from "../../features/onboarding/letterTemplates";
@@ -206,7 +207,7 @@ function ProcessCard({ process }) {
         <div className="fixed bottom-4 right-4 rounded-lg bg-red-600 text-white text-sm px-4 py-2 shadow-lg">{deleteError}</div>
       )}
 
-      {showDetails && <CandidateDetailsModal employee={employee} onClose={() => setShowDetails(false)} />}
+      {showDetails && <CandidateDetailsModal employee={employee} process={process} onClose={() => setShowDetails(false)} />}
     </div>
   );
 }
@@ -220,7 +221,7 @@ export default function AdminOnboardingTrackerPage() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-slate-500 max-w-2xl">
           Offer/appointment letter buttons always record HR's action and timestamp. Whether an actual email goes out
           depends on whether SMTP is configured on the server (see server/.env.example) — each click reports which happened.
@@ -232,6 +233,8 @@ export default function AdminOnboardingTrackerPage() {
           New Candidate
         </button>
       </div>
+
+      <CandidateExcelImportExport />
 
       {isLoading && <p className="text-slate-400">Loading…</p>}
       {!isLoading && data?.length === 0 && <p className="text-slate-400">No onboarding processes yet.</p>}

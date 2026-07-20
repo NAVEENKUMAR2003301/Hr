@@ -14,7 +14,7 @@ import {
   nextEmployeeCode,
 } from "../controllers/employee.controller.js";
 import * as documents from "../controllers/employeeDocument.controller.js";
-import { exportEmployees, importEmployees } from "../controllers/excelImportExport.controller.js";
+import { exportEmployees, importEmployees, exportCandidates, importCandidates } from "../controllers/excelImportExport.controller.js";
 
 const router = Router();
 
@@ -27,6 +27,8 @@ router.get("/", roleMiddleware(["ADMIN", "MANAGER"]), index);
 router.get("/:id", ownershipMiddleware("id"), show);
 router.post("/", roleMiddleware(["ADMIN"]), create);
 router.post("/candidates", roleMiddleware(["ADMIN"]), createCandidateIntake);
+router.get("/candidates/export", roleMiddleware(["ADMIN"]), exportCandidates);
+router.post("/candidates/import", roleMiddleware(["ADMIN"]), uploadSpreadsheet.single("file"), importCandidates);
 router.patch("/:id", roleMiddleware(["ADMIN"]), update);
 router.patch("/:id/id-card", roleMiddleware(["ADMIN"]), setIdCardStatus);
 router.delete("/:id", roleMiddleware(["ADMIN"]), deactivate);

@@ -64,13 +64,23 @@ function orNull(value) {
   return value === "" ? null : value;
 }
 
+// The candidate intake form collects one "Name" field rather than separate First/Last
+// inputs — Employee still needs both, so split on the first space. A single-word name
+// (rare, but possible) leaves lastName as "".
+function splitName(fullName) {
+  const trimmed = fullName.trim();
+  const spaceIndex = trimmed.indexOf(" ");
+  if (spaceIndex === -1) return { firstName: trimmed, lastName: "" };
+  return { firstName: trimmed.slice(0, spaceIndex), lastName: trimmed.slice(spaceIndex + 1).trim() };
+}
+
 // Creates the User + Employee atomically, so a partially-created employee (e.g. a
 // user with no employee row) can never exist. `createOnboarding` defaults to false —
 // the full Add Employee form (this function's main caller) is for people who are
 // already fully hired, not going through onboarding tracking; only the dedicated
 // "New Candidate" intake (createCandidate, below) opts into it, so the Onboarding
 // page's list only ever shows people HR is actually onboarding.
-export async function createEmployee(data, { createOnboarding = false } = {}) {
+export async function createEmployee(data, { createOnboarding = false, onboarding } = {}) {
   const temporaryPassword = crypto.randomBytes(9).toString("base64url");
   const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
@@ -99,7 +109,7 @@ export async function createEmployee(data, { createOnboarding = false } = {}) {
       },
     });
 
-    if (createOnboarding) await createOnboardingForEmployee(tx, employee.id);
+    if (createOnboarding) await createOnboardingForEmployee(tx, employee.id, onboarding);
     await ensureLeaveBalances(tx, employee.id, employee.joiningDate.getFullYear());
 
     return employee;
@@ -110,26 +120,48 @@ export async function createEmployee(data, { createOnboarding = false } = {}) {
   return { employee, temporaryPassword };
 }
 
-// Onboarding's lightweight "New Candidate" intake — only name/phone/email/address
-// are asked; everything else createEmployee needs gets a sensible default so HR
-// isn't forced through the full employee wizard just to start a candidate's
+// Onboarding's "New Candidate" intake — only name/email plus recruitment-pipeline
+// fields are asked; everything else createEmployee needs gets a sensible default so
+// HR isn't forced through the full employee wizard just to start a candidate's
 // onboarding paperwork. Unlike the full form, this always creates the onboarding
 // process — that's the whole point of this entry point.
 export async function createCandidate(data) {
   const employeeCode = await suggestNextEmployeeCode();
+  const { firstName, lastName } = splitName(data.name);
   return createEmployee(
     {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phoneNumber: data.phoneNumber,
+      firstName,
+      lastName,
       personalEmail: data.email,
-      address: data.address,
+      phoneNumber: data.phoneNumber,
       employeeCode,
       email: data.email,
       role: "EMPLOYEE",
       employmentType: "FULL_TIME",
     },
-    { createOnboarding: true }
+    {
+      createOnboarding: true,
+      onboarding: {
+        forReference: data.forReference,
+        designation: data.designation,
+        experienceLevel: data.experienceLevel,
+        relevantExperience: data.relevantExperience,
+        trainingKt: data.trainingKt,
+        technicalRound: data.technicalRound,
+        hrRound: data.hrRound,
+        currentCtc: data.currentCtc,
+        expectedCtc: data.expectedCtc,
+        trainingStipend: data.trainingStipend,
+        selectionMailSent: data.selectionMailSent,
+        docUpdates: data.docUpdates,
+        offerGiven: data.offerGiven,
+        appointmentLetterGiven: data.appointmentLetterGiven,
+        onboardingStatus: data.onboardingStatus,
+        trainingStatus: data.trainingStatus,
+        liveProject: data.liveProject,
+        onboardingDate: data.onboardingDate,
+      },
+    }
   );
 }
 

@@ -34,6 +34,14 @@ export function useUpdateOnboardingDates() {
   );
 }
 
+// Edits the recruitment-pipeline fields collected on the New Candidate intake form
+// (referral note, designation, rounds, CTC, etc.) — see Candidate Details modal.
+export function useUpdateOnboardingPipeline() {
+  return useOnboardingMutation(
+    async ({ processId, ...data }) => (await api.patch(`/onboarding/${processId}/pipeline`, data)).data
+  );
+}
+
 // Removes the onboarding process/checklist only — the employee record and their
 // login are untouched (see server/src/controllers/onboarding.controller.js removeProcess).
 export function useDeleteOnboardingProcess() {

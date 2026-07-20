@@ -106,6 +106,7 @@ model User {
 
   employee  Employee?
   auditLogs AuditLog[]
+  hrApprovedLeaveRequests LeaveRequest[] @relation("LeaveRequestHrApprovedByUser")
 }
 
 // Who-changed-what trail across the app, now that multiple HR/admin users share
@@ -289,6 +290,11 @@ model LeaveRequest {
   hrApprovalId      String?
   hrApproval        Employee?           @relation("LeaveRequestHrApproval", fields: [hrApprovalId], references: [id])
   hrComment         String?
+  // The HR/admin User who actually clicked approve/mark — hrApprovalId (above) is an
+  // Employee FK and stays null for sign-up-only HR accounts with no Employee record,
+  // so this is the field that reliably answers "which HR did this".
+  hrApprovedByUserId String?
+  hrApprovedByUser   User?              @relation("LeaveRequestHrApprovedByUser", fields: [hrApprovedByUserId], references: [id])
 
   createdAt         DateTime            @default(now())
 
@@ -324,6 +330,25 @@ model OnboardingProcess {
   paymentStatus          OnboardingPaymentStatus @default(PENDING)
   offerLetterSentAt      DateTime?
   appointmentLetterSentAt DateTime?
+
+  // Recruitment-pipeline fields collected on the "New Candidate" intake form — these
+  // describe how the candidate got to onboarding, not the onboarding checklist itself.
+  // Status-ish ones (technicalRound, hrRound, docUpdates, trainingStatus) are free
+  // text, not enums — HR wants to type whatever note fits, not pick from a fixed list.
+  forReference      String?
+  designation       String?
+  experienceLevel   String?
+  relevantExperience String?
+  trainingKt        String?
+  technicalRound    String?
+  hrRound           String?
+  currentCtc        String?
+  expectedCtc       String?
+  trainingStipend   String?
+  selectionMailSent Boolean  @default(false)
+  docUpdates        String?
+  trainingStatus    String?
+  liveProject       String?
 
   taskItems     OnboardingTaskItem[]
 }
